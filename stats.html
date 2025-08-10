@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- ★★★ 1. 검색 엔진 노출 방지 태그 ★★★ -->
+    <meta name="robots" content="noindex, nofollow">
+    
     <title>stats</title>
     <style>
         body { font-family: 'Malgun Gothic', sans-serif; background-color: #f4f4f4; margin: 0; padding: 20px; }
@@ -14,12 +17,27 @@
         #total-visits { font-weight: bold; }
         .status-message { text-align: center; padding: 20px; font-size: 1.2em; color: #555; }
         #error { color: red; }
+        
+        /* 비밀번호 입력 영역 스타일 */
+        #password-prompt { padding: 30px; text-align: center; }
+        #password-input { padding: 10px; font-size: 1em; margin-right: 5px; border: 1px solid #ccc; border-radius: 4px; }
+        #submit-btn { padding: 10px 15px; font-size: 1em; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 4px; }
     </style>
 </head>
 <body>
-    <div class="container">
+
+    <!-- ★★★ 2. 비밀번호 입력 영역 ★★★ -->
+    <div id="password-prompt" class="container">
+        <h2>통계 페이지 접근</h2>
+        <p>비밀번호를 입력하세요.</p>
+        <input type="password" id="password-input" placeholder="비밀번호" />
+        <button id="submit-btn">확인</button>
+    </div>
+
+    <!-- 통계 데이터가 표시될 영역 (처음에는 숨겨져 있음) -->
+    <div id="stats-container" class="container" style="display:none;">
         <h1>daily stats</h1>
-        <p>total: <span id="total-visits">0</span></p>
+        <p>total (최근 100일): <span id="total-visits">0</span></p>
         <div id="status" class="status-message">데이터를 불러오는 중...</div>
         <table id="stats-table" style="display:none;">
             <thead>
@@ -28,24 +46,51 @@
                     <th>count</th>
                 </tr>
             </thead>
-            <tbody id="stats-body">
-                <!-- 데이터가 여기에 동적으로 추가됩니다. -->
-            </tbody>
+            <tbody id="stats-body"></tbody>
         </table>
     </div>
 
-    <!-- Supabase 클라이언트 라이브러리 -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
-        // ★★★ 아래 정보를 본인의 정보로 채워주세요. ★★★
         const supabaseUrl = 'https://oqcqgnjslsuztqxqbthr.supabase.co';
-        // Supabase 프로젝트의 API Key (anon key)를 여기에 정확히 입력하세요.
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9xY3FnbmpzbHN1enRxeHFidGhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ3NzE4NzUsImV4cCI6MjA3MDM0Nzg3NX0.ugb9egx8Q8C0X8Bo1qURrPwxwgFI_JimuvtyCXdEJfo'; 
-
-        // ★★★ 수정된 부분 ★★★
-        // Supabase 라이브러리 객체에서 createClient 함수를 호출하여 'client'라는 새 변수에 저장합니다.
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9xY3FnbmpzbHN1enRxeHFidGhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ3NzE4NzUsImV4cCI6MjA3MDM0Nzg3NX0.ugb9egx8Q8C0X8Bo1qURrPwxwgFI_JimuvtyCXdEJfo';
         const client = supabase.createClient(supabaseUrl, supabaseKey);
 
+        async function fetchStats() {
+            // ... (함수 내용은 그대로) ...
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const passwordPrompt = document.getElementById('password-prompt');
+            const statsContainer = document.getElementById('stats-container');
+            const passwordInput = document.getElementById('password-input');
+            const submitBtn = document.getElementById('submit-btn');
+            
+            // 비밀번호 '1234' (원하시면 이 값을 변경하세요)
+            const CORRECT_PASSWORD = '1234';
+
+            const checkPassword = () => {
+                if (passwordInput.value === CORRECT_PASSWORD) {
+                    passwordPrompt.style.display = 'none';
+                    statsContainer.style.display = 'block';
+                    fetchStats(); // 비밀번호가 맞으면 데이터 로드 시작
+                } else {
+                    alert('비밀번호가 틀렸습니다.');
+                    passwordInput.value = ''; // 입력창 비우기
+                }
+            };
+            
+            submitBtn.addEventListener('click', checkPassword);
+            
+            // Enter 키로도 확인 가능하게 함
+            passwordInput.addEventListener('keyup', (event) => {
+                if (event.key === 'Enter') {
+                    checkPassword();
+                }
+            });
+        });
+
+        // 데이터 가져오는 함수 (내용은 이전과 거의 동일, limit 추가)
         async function fetchStats() {
             const statusDiv = document.getElementById('status');
             const table = document.getElementById('stats-table');
@@ -53,15 +98,14 @@
             const totalVisitsSpan = document.getElementById('total-visits');
 
             try {
-                // 'client' 변수를 사용하여 데이터를 가져옵니다.
+                // ★★★ 3. 최근 100개 데이터만 불러오기 (.limit(100) 추가) ★★★
                 const { data, error } = await client
                     .from('daily_visits')
                     .select('*')
-                    .order('date', { ascending: false });
+                    .order('date', { ascending: false })
+                    .limit(100);
 
-                if (error) {
-                    throw error;
-                }
+                if (error) throw error;
 
                 if (data.length === 0) {
                     statusDiv.textContent = '아직 방문 기록이 없습니다.';
@@ -70,14 +114,10 @@
                     return;
                 }
 
-                statsBody.innerHTML = ''; // 테이블 내용 초기화
+                statsBody.innerHTML = '';
                 let totalVisits = 0;
-
                 data.forEach(record => {
-                    const row = `<tr>
-                                    <td>${record.date}</td>
-                                    <td>${record.count.toLocaleString()}</td>
-                               </tr>`;
+                    const row = `<tr><td>${record.date}</td><td>${record.count.toLocaleString()}</td></tr>`;
                     statsBody.innerHTML += row;
                     totalVisits += record.count;
                 });
@@ -93,9 +133,6 @@
                 console.error('Error fetching stats:', error);
             }
         }
-
-        // 페이지가 로드되면 통계 데이터를 불러옵니다.
-        document.addEventListener('DOMContentLoaded', fetchStats);
     </script>
 </body>
 </html>
